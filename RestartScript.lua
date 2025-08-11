@@ -1,70 +1,41 @@
--- RestartScript.lua
--- Minimal UI with Server Hop and Rejoin, plus auto-restart Infinite Yield on teleport using the same link as IY
+-- Restart Script: Fluent UI + Server Hop/Rejoin + Auto-reload Infinite Yield on teleport
 
--- Services
+-- services
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
 local localPlayer = Players.LocalPlayer
-local PlaceId = game.PlaceId
-local JobId = game.JobId
+local PLACE_ID = game.PlaceId
+local JOB_ID = game.JobId
 
--- Executor compatibility: discover queue_on_teleport across popular executors
-local function getQueueOnTeleport()
-    local ok, q = pcall(function()
-        return queue_on_teleport
-    end)
-    if ok and type(q) == "function" then return q end
-    local okSyn, synQ = pcall(function()
-        return syn and syn.queue_on_teleport
-    end)
-    if okSyn and type(synQ) == "function" then return synQ end
-    local okFlux, fluxQ = pcall(function()
-        return fluxus and fluxus.queue_on_teleport
-    end)
-    if okFlux and type(fluxQ) == "function" then return fluxQ end
-    return nil
-end
+-- executor queue_on_teleport compatibility
+local queueTeleportFunc = rawget(getfenv(), "queue_on_teleport")
+    or (rawget(getfenv(), "syn") and syn.queue_on_teleport)
+    or (rawget(getfenv(), "fluxus") and fluxus.queue_on_teleport)
 
-local queueOnTeleport = getQueueOnTeleport()
+-- use the exact Infinite Yield link from original source
+local INFINITE_YIELD_URL = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"
 
--- The exact same link used by Infinite Yield for auto-restart
-local INFINITE_YIELD_LINK = "https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/RestartScript.lua"
-
--- Ensure we only queue once per teleport
-local hasQueuedForThisTeleport = false
-
--- Queue this script to load on the next teleport destination
-local function queueForNextTeleport()
-    if not queueOnTeleport then return end
-    queueOnTeleport("loadstring(game:HttpGet('" .. INFINITE_YIELD_LINK .. "'))()")
-end
-
--- Auto-queue Infinite Yield to run after teleport
-local function setupAutoRestartOnTeleport()
-    if not queueOnTeleport then return end
-    if not localPlayer then return end
-    localPlayer.OnTeleport:Connect(function(state)
-        if hasQueuedForThisTeleport then return end
-        hasQueuedForThisTeleport = true
-        queueForNextTeleport()
+-- automatically queue Infinite Yield to run after teleport
+local queuedThisTeleport = false
+if queueTeleportFunc then
+    localPlayer.OnTeleport:Connect(function()
+        if not queuedThisTeleport then
+            queuedThisTeleport = true
+            pcall(function()
+                queueTeleportFunc("loadstring(game:HttpGet('" .. INFINITE_YIELD_URL .. "'))()")
+            end)
+        end
     end)
 end
 
-setupAutoRestartOnTeleport()
-
--- Pre-arm a queued load so even the very first teleport is covered
-if queueOnTeleport then
-    queueForNextTeleport()
-end
-
--- Fluent UI
+-- UI using Fluent library
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Restart Tools",
-    SubTitle = "Server Hop & Rejoin",
+    Title = "Restart Script",
+    SubTitle = "Server Hop / Rejoin + Auto IY",
     TabWidth = 160,
     Size = UDim2.fromOffset(520, 360),
     Acrylic = true,
@@ -73,81 +44,67 @@ local Window = Fluent:CreateWindow({
 })
 
 local Tabs = {
-    Main = Window:AddTab({ Title = "Main", Icon = "" })
+    Main = Window:AddTab({ Title = "Main", Icon = "" }),
 }
 
-local function notify(title, content, duration)
+if queueTeleportFunc then
     Fluent:Notify({
-        Title = title or "Info",
-        Content = content or "",
-        Duration = duration or 5
+        Title = "Auto-Restart",
+        Content = "Infinite Yield sẽ tự chạy lại khi Teleport.",
+        Duration = 6
     })
-end
-
--- Warn if executor lacks queue_on_teleport
-if not queueOnTeleport then
-    notify("Incompatible Executor", "queue_on_teleport is not available; auto-restart on teleport will be disabled.")
+else
+    Fluent:Notify({
+        Title = "Auto-Restart",
+        Content = "Executor không hỗ trợ queue_on_teleport, tự khởi động lại có thể không hoạt động.",
+        Duration = 8
+    })
 end
 
 -- Server Hop button
 Tabs.Main:AddButton({
     Title = "Server Hop",
-    Description = "Teleport to another public server",
+    Description = "Chuyển sang public server khác",
     Callback = function()
-        -- Query public servers and pick one that is not full and not the current server
-        local success, body = pcall(function()
-            local url = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true"
-            return HttpService:JSONDecode(game:HttpGet(url))
+        local servers = {}
+        local ok, res = pcall(function()
+            local url = "https://games.roblox.com/v1/games/" .. tostring(PLACE_ID) .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true"
+            local body = game:HttpGet(url)
+            return HttpService:JSONDecode(body)
         end)
-
-        if not success or not body or not body.data then
-            return notify("Server Hop", "Failed to fetch server list.")
-        end
-
-        local candidateServers = {}
-        for _, server in ipairs(body.data) do
-            if typeof(server) == "table" and tonumber(server.playing) and tonumber(server.maxPlayers) then
-                if server.playing < server.maxPlayers and server.id ~= JobId then
-                    table.insert(candidateServers, server.id)
+        if ok and res and res.data then
+            for _, v in ipairs(res.data) do
+                if typeof(v) == "table" and tonumber(v.playing) and tonumber(v.maxPlayers)
+                    and v.playing < v.maxPlayers and v.id ~= JOB_ID then
+                    table.insert(servers, v.id)
                 end
             end
         end
 
-        if #candidateServers == 0 then
-            return notify("Server Hop", "No available servers found.")
+        if #servers > 0 then
+            local target = servers[math.random(1, #servers)]
+            TeleportService:TeleportToPlaceInstance(PLACE_ID, target, localPlayer)
+        else
+            Fluent:Notify({ Title = "Server Hop", Content = "Không tìm thấy server phù hợp.", Duration = 6 })
         end
-
-        local targetId = candidateServers[math.random(1, #candidateServers)]
-        -- Pre-queue now so this hop definitely loads the script on arrival
-        if queueOnTeleport then
-            queueForNextTeleport()
-            hasQueuedForThisTeleport = true
-        end
-        TeleportService:TeleportToPlaceInstance(PlaceId, targetId, localPlayer)
     end
 })
 
--- Rejoin button
+-- Rejoin Server button
 Tabs.Main:AddButton({
     Title = "Rejoin Server",
-    Description = "Rejoin the current server",
+    Description = "Tham gia lại server hiện tại",
     Callback = function()
-        -- Pre-queue now so this rejoin definitely loads the script on arrival
-        if queueOnTeleport then
-            queueForNextTeleport()
-            hasQueuedForThisTeleport = true
-        end
         if #Players:GetPlayers() <= 1 then
             localPlayer:Kick("\nRejoining...")
             task.wait()
-            TeleportService:Teleport(PlaceId, localPlayer)
+            TeleportService:Teleport(PLACE_ID, localPlayer)
         else
-            TeleportService:TeleportToPlaceInstance(PlaceId, JobId, localPlayer)
+            TeleportService:TeleportToPlaceInstance(PLACE_ID, JOB_ID, localPlayer)
         end
     end
 })
 
 Window:SelectTab(1)
-notify("Restart Tools", "Loaded. Use the buttons to Server Hop or Rejoin.")
 
 
