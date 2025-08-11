@@ -1,5 +1,5 @@
 -- RestartScript với tính năng tự động khởi động lại
--- Version: Fixed & Stable
+-- Version: Optimized & Fixed (Giữ lại cấu trúc gốc)
 
 -- Kiểm tra nếu Script đã được load để tránh chạy nhiều lần
 if _G.RESTART_SCRIPT_LOADED then
@@ -12,20 +12,6 @@ _G.RESTART_SCRIPT_LOADED = true
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
-
--- Đợi LocalPlayer load hoàn toàn
-local LocalPlayer = Players.LocalPlayer
-if not LocalPlayer then
-    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-    LocalPlayer = Players.LocalPlayer
-end
-
--- Đợi Character load (quan trọng để tránh lỗi)
-if not LocalPlayer.Character then
-    LocalPlayer.CharacterAdded:Wait()
-    wait(0.5) -- Thêm delay để đảm bảo mọi thứ load xong
-end
 
 -- Biến toàn cục
 local PlaceId = game.PlaceId
@@ -45,7 +31,7 @@ local SETTINGS_FILE = "RestartScript_Settings.json"
 
 -- Cài đặt mặc định
 local Settings = {
-    AutoRestart = true
+    AutoRestart = true -- Mặc định bật tính năng tự động khởi động lại
 }
 
 -- Function lưu cài đặt
@@ -75,63 +61,20 @@ end
 -- Load cài đặt khi khởi động
 LoadSettings()
 
--- Cleanup function trước khi teleport
-local function CleanupBeforeTeleport()
-    -- Destroy old GUI if exists
-    if _G.FluentGui then
-        pcall(function()
-            _G.FluentGui:Destroy()
-        end)
-        _G.FluentGui = nil
-    end
-    
-    -- Clear connections
-    if _G.RestartConnections then
-        for _, connection in pairs(_G.RestartConnections) do
-            pcall(function()
-                connection:Disconnect()
-            end)
-        end
-        _G.RestartConnections = nil
-    end
-end
+-- Load Fluent UI Library
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 
--- Load Fluent UI Library với error handling
-local Fluent
-local success, err = pcall(function()
-    Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-end)
-
-if not success then
-    warn("Không thể load Fluent UI:", err)
-    return
-end
-
--- Đợi một chút trước khi tạo GUI
-wait(0.5)
-
--- Tạo Window với error handling
-local Window
-success, err = pcall(function()
-    Window = Fluent:CreateWindow({
-        Title = "Auto Restart Script",
-        SubTitle = "Server Hop & Rejoin với Auto Restart",
-        TabWidth = 160,
-        Size = UDim2.fromOffset(480, 320),
-        Acrylic = true,
-        Theme = "Dark",
-        MinimizeKey = Enum.KeyCode.RightControl
-    })
-end)
-
-if not success then
-    warn("Không thể tạo Window:", err)
-    return
-end
-
--- Lưu reference để cleanup sau
-_G.FluentGui = Window
-_G.RestartConnections = {}
+-- Tạo Window
+local Window = Fluent:CreateWindow({
+    Title = "Auto Restart Script",
+    SubTitle = "Server Hop & Rejoin với Auto Restart",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(480, 320),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl
+})
 
 -- Tạo Tab Main
 local MainTab = Window:AddTab({ 
@@ -172,11 +115,12 @@ MainTab:AddParagraph({
     Content = ""
 })
 
--- Button Server Hop
+-- Button Server Hop (KHÔNG queue script ở đây - giống script gốc)
 MainTab:AddButton({
     Title = "Server Hop",
     Description = "Chuyển sang server khác ngẫu nhiên",
     Callback = function()
+        -- Hiển thị dialog xác nhận
         Window:Dialog({
             Title = "Xác nhận Server Hop",
             Content = "Bạn có chắc muốn chuyển sang server khác?",
@@ -190,37 +134,21 @@ MainTab:AddButton({
                             Duration = 2
                         })
                         
-                        -- Cleanup trước khi hop
-                        CleanupBeforeTeleport()
-                        
-                        -- Tìm server mới với error handling
+                        -- Tìm server mới
                         local servers = {}
-                        local success, result = pcall(function()
-                            return game:HttpGetAsync("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true")
-                        end)
+                        local req = game:HttpGetAsync("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true")
+                        local body = HttpService:JSONDecode(req)
                         
-                        if success and result then
-                            local body = HttpService:JSONDecode(result)
-                            
-                            if body and body.data then
-                                for i, v in pairs(body.data) do
-                                    if type(v) == "table" and v.playing and v.maxPlayers and v.playing < v.maxPlayers and v.id ~= JobId then
-                                        table.insert(servers, v.id)
-                                    end
+                        if body and body.data then
+                            for i, v in pairs(body.data) do
+                                if type(v) == "table" and v.playing and v.maxPlayers and v.playing < v.maxPlayers and v.id ~= JobId then
+                                    table.insert(servers, v.id)
                                 end
                             end
                         end
                         
                         if #servers > 0 then
-                            -- Queue script nếu AutoRestart bật
-                            if Settings.AutoRestart and queueteleport then
-                                queueteleport([[
-                                    wait(3) -- Đợi game load
-                                    loadstring(game:HttpGet('https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/RestartScript.lua'))()
-                                ]])
-                            end
-                            
-                            TeleportService:TeleportToPlaceInstance(PlaceId, servers[math.random(1, #servers)], LocalPlayer)
+                            TeleportService:TeleportToPlaceInstance(PlaceId, servers[math.random(1, #servers)], Players.LocalPlayer)
                         else
                             Fluent:Notify({
                                 Title = "Lỗi",
@@ -241,11 +169,12 @@ MainTab:AddButton({
     end
 })
 
--- Button Rejoin Server
+-- Button Rejoin Server (KHÔNG queue script ở đây - giống script gốc)
 MainTab:AddButton({
     Title = "Rejoin Server", 
     Description = "Tham gia lại server hiện tại",
     Callback = function()
+        -- Hiển thị dialog xác nhận
         Window:Dialog({
             Title = "Xác nhận Rejoin",
             Content = "Bạn có chắc muốn rejoin server này?",
@@ -259,24 +188,13 @@ MainTab:AddButton({
                             Duration = 2
                         })
                         
-                        -- Cleanup trước khi rejoin
-                        CleanupBeforeTeleport()
-                        
-                        -- Queue script nếu AutoRestart bật
-                        if Settings.AutoRestart and queueteleport then
-                            queueteleport([[
-                                wait(3) -- Đợi game load
-                                loadstring(game:HttpGet('https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/RestartScript.lua'))()
-                            ]])
-                        end
-                        
                         -- Rejoin logic
                         if #Players:GetPlayers() <= 1 then
-                            LocalPlayer:Kick("\nRejoining...")
+                            Players.LocalPlayer:Kick("\nRejoining...")
                             wait()
-                            TeleportService:Teleport(PlaceId, LocalPlayer)
+                            TeleportService:Teleport(PlaceId, Players.LocalPlayer)
                         else
-                            TeleportService:TeleportToPlaceInstance(PlaceId, JobId, LocalPlayer)
+                            TeleportService:TeleportToPlaceInstance(PlaceId, JobId, Players.LocalPlayer)
                         end
                     end
                 },
@@ -307,6 +225,18 @@ MainTab:AddParagraph({
         Players.MaxPlayers)
 })
 
+-- TÍNH NĂNG CHÍNH: Tự động khởi động lại khi teleport (GIỐNG SCRIPT GỐC)
+local TeleportCheck = false
+Players.LocalPlayer.OnTeleport:Connect(function(State)
+    if Settings.AutoRestart and (not TeleportCheck) and queueteleport then
+        TeleportCheck = true
+        -- Queue script để chạy khi vào server mới
+        queueteleport([[
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/RestartScript.lua'))()
+        ]])
+    end
+end)
+
 -- Kiểm tra executor support
 if not queueteleport then
     wait(1)
@@ -318,8 +248,17 @@ if not queueteleport then
     })
 end
 
+-- SaveManager setup (GIỮ LẠI ĐỂ TRÁNH LỖI)
+SaveManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+SaveManager:SetFolder("RestartScript/configs")
+
 -- Select tab đầu tiên
 Window:SelectTab(1)
+
+-- Load autoload config
+SaveManager:LoadAutoloadConfig()
 
 -- Thông báo khởi động thành công
 Fluent:Notify({
