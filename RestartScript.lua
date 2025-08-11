@@ -30,7 +30,7 @@ end
 local queueOnTeleport = getQueueOnTeleport()
 
 -- The exact same link used by Infinite Yield for auto-restart
-local INFINITE_YIELD_LINK = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"
+local INFINITE_YIELD_LINK = "https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/RestartScript.lua"
 
 -- Ensure we only queue once per teleport
 local hasQueuedForThisTeleport = false
