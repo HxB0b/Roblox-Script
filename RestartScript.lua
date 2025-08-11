@@ -24,7 +24,7 @@ end
 -- Đợi Character load (quan trọng để tránh lỗi)
 if not LocalPlayer.Character then
     LocalPlayer.CharacterAdded:Wait()
-    wait(1) -- Thêm delay để đảm bảo mọi thứ load xong
+    wait(0.5) -- Thêm delay để đảm bảo mọi thứ load xong
 end
 
 -- Biến toàn cục
