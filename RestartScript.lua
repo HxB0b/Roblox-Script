@@ -17,61 +17,24 @@ local HttpService = game:GetService("HttpService")
 local PlaceId = game.PlaceId
 local JobId = game.JobId
 
+-- =====================================================
+-- CÀI ĐẶT AUTO RESTART (Thay đổi true/false ở đây)
+-- =====================================================
+local AUTO_RESTART_ENABLED = true  -- Đổi thành false nếu muốn tắt Auto Restart
+-- =====================================================
+
 -- Kiểm tra và thiết lập các function cần thiết
 local queueteleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
-local writefile = writefile or (syn and syn.writefile)
-local readfile = readfile or (syn and syn.readfile)
-local isfile = isfile or (readfile and function(file)
-    local success = pcall(readfile, file)
-    return success
-end)
-
--- Tên file lưu cài đặt
-local SETTINGS_FILE = "RestartScript_Settings.json"
-
--- Cài đặt mặc định
-local Settings = {
-    AutoRestart = true -- Mặc định bật tính năng tự động khởi động lại
-}
-
--- Function lưu cài đặt
-local function SaveSettings()
-    if writefile then
-        local success, err = pcall(function()
-            writefile(SETTINGS_FILE, HttpService:JSONEncode(Settings))
-        end)
-        if not success then
-            warn("Không thể lưu cài đặt:", err)
-        end
-    end
-end
-
--- Function đọc cài đặt
-local function LoadSettings()
-    if readfile and isfile and isfile(SETTINGS_FILE) then
-        local success, data = pcall(function()
-            return HttpService:JSONDecode(readfile(SETTINGS_FILE))
-        end)
-        if success and data then
-            Settings = data
-        end
-    end
-end
-
--- Load cài đặt khi khởi động
-LoadSettings()
 
 -- Load Fluent UI Library
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 -- Tạo Window
 local Window = Fluent:CreateWindow({
     Title = "Auto Restart Script",
-    SubTitle = "Server Hop & Rejoin với Auto Restart",
+    SubTitle = "Server Hop & Rejoin",
     TabWidth = 160,
-    Size = UDim2.fromOffset(480, 360),
+    Size = UDim2.fromOffset(380, 250),
     Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightControl
@@ -81,45 +44,6 @@ local Window = Fluent:CreateWindow({
 local MainTab = Window:AddTab({ 
     Title = "Main", 
     Icon = "home" 
-})
-
--- Thêm thông tin
-MainTab:AddParagraph({
-    Title = "Thông tin",
-    Content = "Script này sẽ tự động khởi động lại khi bạn Server Hop hoặc Rejoin.\nChỉ cần chạy 1 lần, sau đó mọi lần đổi server đều tự động!"
-})
-
--- Toggle Auto Restart
-local AutoRestartToggle = MainTab:AddToggle("AutoRestart", {
-    Title = "Auto Restart Script",
-    Description = "Tự động khởi động lại Script khi teleport",
-    Default = Settings.AutoRestart
-})
-
-AutoRestartToggle:OnChanged(function()
-    Settings.AutoRestart = Fluent.Options.AutoRestart.Value
-    SaveSettings()
-    
-    if Settings.AutoRestart then
-        Fluent:Notify({
-            Title = "Auto Restart",
-            Content = "Đã BẬT tính năng tự động khởi động lại",
-            SubContent = "Script sẽ tự động chạy khi bạn đổi server",
-            Duration = 3
-        })
-    else
-        Fluent:Notify({
-            Title = "Auto Restart", 
-            Content = "Đã TẮT tính năng tự động khởi động lại",
-            Duration = 3
-        })
-    end
-end)
-
--- Spacing
-MainTab:AddParagraph({
-    Title = "",
-    Content = ""
 })
 
 -- Button Server Hop
@@ -216,26 +140,10 @@ MainTab:AddButton({
     end
 })
 
--- Spacing
-MainTab:AddParagraph({
-    Title = "",
-    Content = ""
-})
-
--- Thông tin Server
-MainTab:AddParagraph({
-    Title = "Thông tin Server",
-    Content = string.format("Place ID: %s\nJob ID: %s\nSố người chơi: %d/%d", 
-        tostring(PlaceId), 
-        tostring(JobId),
-        #Players:GetPlayers(),
-        Players.MaxPlayers)
-})
-
 -- TÍNH NĂNG CHÍNH: Tự động khởi động lại khi teleport
 local TeleportCheck = false
 Players.LocalPlayer.OnTeleport:Connect(function(State)
-    if Settings.AutoRestart and (not TeleportCheck) and queueteleport then
+    if AUTO_RESTART_ENABLED and (not TeleportCheck) and queueteleport then
         TeleportCheck = true
         -- Queue script để chạy khi vào server mới
         -- Link này trỏ đến chính script này trên GitHub của bạn
@@ -256,29 +164,16 @@ if not queueteleport then
     })
 end
 
--- SaveManager và InterfaceManager (tùy chọn)
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("RestartScript")
-SaveManager:SetFolder("RestartScript/configs")
-
--- Build Interface section
-InterfaceManager:BuildInterfaceSection(MainTab)
-SaveManager:BuildConfigSection(MainTab)
-
--- Load settings khi khởi động
+-- Select tab mặc định
 Window:SelectTab(1)
-SaveManager:LoadAutoloadConfig()
 
 -- Thông báo khởi động thành công
 Fluent:Notify({
     Title = "Khởi động thành công!",
     Content = "RestartScript đã sẵn sàng",
-    SubContent = Settings.AutoRestart and "Auto Restart: BẬT" or "Auto Restart: TẮT",
+    SubContent = AUTO_RESTART_ENABLED and "Auto Restart: BẬT" or "Auto Restart: TẮT",
     Duration = 3
 })
 
 print("RestartScript loaded successfully!")
-print("Auto Restart Status:", Settings.AutoRestart)
+print("Auto Restart Status:", AUTO_RESTART_ENABLED)
