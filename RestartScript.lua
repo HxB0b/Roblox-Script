@@ -47,7 +47,7 @@ local SettingsTab = Window:AddTab({
     Icon = "settings"
 })
 
--- Thông tin Server với auto-update
+-- Thông tin Server
 local ServerInfo = MainTab:AddParagraph({
     Title = "Thông tin Server",
     Content = string.format("Place ID: %s\nJob ID: %s\nSố người chơi: %d/%d\nPing: %d ms", 
@@ -58,7 +58,6 @@ local ServerInfo = MainTab:AddParagraph({
         math.floor(Players.LocalPlayer:GetNetworkPing() * 1000))
 })
 
--- Auto update server info
 spawn(function()
     while wait(2) do
         pcall(function()
@@ -72,7 +71,7 @@ spawn(function()
     end
 end)
 
--- Function Server Hop cải tiến
+-- Function Server Hop
 function ServerHop()
     local PlaceID = game.PlaceId
     local AllIDs = {}
@@ -147,7 +146,7 @@ function ServerHop()
     Teleport()
 end
 
--- Button Server Hop với cơ chế mới
+-- Button Server Hop
 MainTab:AddButton({
     Title = "Server Hop",
     Description = "Chuyển sang server khác (Cơ chế nâng cao)",
@@ -159,7 +158,7 @@ MainTab:AddButton({
             Duration = 3
         })
         
-        -- Gọi function Server Hop cải tiến
+        -- Gọi function Server Hop
         ServerHop()
     end
 })
@@ -185,7 +184,7 @@ MainTab:AddButton({
         
         wait(0.5)
         
-        -- Rejoin logic cải tiến
+        -- Rejoin logic
         if #Players:GetPlayers() <= 1 then
             Players.LocalPlayer:Kick("\nRejoining...")
             wait()
