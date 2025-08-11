@@ -36,13 +36,18 @@ local INFINITE_YIELD_LINK = "https://raw.githubusercontent.com/HxB0b/Roblox-Scri
 local hasQueuedForThisTeleport = false
 
 -- Auto-queue Infinite Yield to run after teleport
+local function queueForNextTeleport()
+    if not queueOnTeleport then return end
+    queueOnTeleport("loadstring(game:HttpGet('" .. INFINITE_YIELD_LINK .. "'))()")
+end
+
 local function setupAutoRestartOnTeleport()
     if not queueOnTeleport then return end
     if not localPlayer then return end
     localPlayer.OnTeleport:Connect(function()
         if hasQueuedForThisTeleport then return end
         hasQueuedForThisTeleport = true
-        queueOnTeleport("loadstring(game:HttpGet('" .. INFINITE_YIELD_LINK .. "'))()")
+        queueForNextTeleport()
     end)
 end
 
@@ -107,7 +112,11 @@ Tabs.Main:AddButton({
         end
 
         local targetId = candidateServers[math.random(1, #candidateServers)]
-        hasQueuedForThisTeleport = false -- allow queue for the next teleport
+        -- Queue next load now to ensure reliability across executors
+        if queueOnTeleport then
+            queueForNextTeleport()
+            hasQueuedForThisTeleport = true
+        end
         TeleportService:TeleportToPlaceInstance(PlaceId, targetId, localPlayer)
     end
 })
@@ -117,7 +126,11 @@ Tabs.Main:AddButton({
     Title = "Rejoin Server",
     Description = "Rejoin the current server",
     Callback = function()
-        hasQueuedForThisTeleport = false -- allow queue for the next teleport
+        -- Queue next load now to ensure reliability across executors
+        if queueOnTeleport then
+            queueForNextTeleport()
+            hasQueuedForThisTeleport = true
+        end
         if #Players:GetPlayers() <= 1 then
             localPlayer:Kick("\nRejoining...")
             task.wait()
