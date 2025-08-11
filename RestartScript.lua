@@ -1,5 +1,5 @@
 -- RestartScript với tính năng tự động khởi động lại
--- Version: Optimized & Fixed (Giữ lại cấu trúc gốc)
+-- Tương tự Infinite Yield FE V6 nhưng sử dụng Fluent UI Library
 
 -- Kiểm tra nếu Script đã được load để tránh chạy nhiều lần
 if _G.RESTART_SCRIPT_LOADED then
@@ -64,13 +64,14 @@ LoadSettings()
 -- Load Fluent UI Library
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 -- Tạo Window
 local Window = Fluent:CreateWindow({
     Title = "Auto Restart Script",
     SubTitle = "Server Hop & Rejoin với Auto Restart",
     TabWidth = 160,
-    Size = UDim2.fromOffset(480, 320),
+    Size = UDim2.fromOffset(480, 360),
     Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightControl
@@ -80,6 +81,16 @@ local Window = Fluent:CreateWindow({
 local MainTab = Window:AddTab({ 
     Title = "Main", 
     Icon = "home" 
+})
+
+-- Thông tin Server
+MainTab:AddParagraph({
+    Title = "Thông tin Server",
+    Content = string.format("Place ID: %s\nJob ID: %s\nSố người chơi: %d/%d", 
+        tostring(PlaceId), 
+        tostring(JobId),
+        #Players:GetPlayers(),
+        Players.MaxPlayers)
 })
 
 -- Toggle Auto Restart
@@ -109,13 +120,7 @@ AutoRestartToggle:OnChanged(function()
     end
 end)
 
--- Spacing
-MainTab:AddParagraph({
-    Title = "",
-    Content = ""
-})
-
--- Button Server Hop (KHÔNG queue script ở đây - giống script gốc)
+-- Button Server Hop
 MainTab:AddButton({
     Title = "Server Hop",
     Description = "Chuyển sang server khác ngẫu nhiên",
@@ -169,7 +174,7 @@ MainTab:AddButton({
     end
 })
 
--- Button Rejoin Server (KHÔNG queue script ở đây - giống script gốc)
+-- Button Rejoin Server
 MainTab:AddButton({
     Title = "Rejoin Server", 
     Description = "Tham gia lại server hiện tại",
@@ -209,28 +214,13 @@ MainTab:AddButton({
     end
 })
 
--- Spacing
-MainTab:AddParagraph({
-    Title = "",
-    Content = ""
-})
-
--- Thông tin Server
-MainTab:AddParagraph({
-    Title = "Thông tin Server",
-    Content = string.format("Place ID: %s\nJob ID: %s\nSố người chơi: %d/%d", 
-        tostring(PlaceId), 
-        tostring(JobId),
-        #Players:GetPlayers(),
-        Players.MaxPlayers)
-})
-
--- TÍNH NĂNG CHÍNH: Tự động khởi động lại khi teleport (GIỐNG SCRIPT GỐC)
+-- TÍNH NĂNG CHÍNH: Tự động khởi động lại khi teleport
 local TeleportCheck = false
 Players.LocalPlayer.OnTeleport:Connect(function(State)
     if Settings.AutoRestart and (not TeleportCheck) and queueteleport then
         TeleportCheck = true
         -- Queue script để chạy khi vào server mới
+        -- Link này trỏ đến chính script này trên GitHub của bạn
         queueteleport([[
             loadstring(game:HttpGet('https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/RestartScript.lua'))()
         ]])
@@ -248,17 +238,23 @@ if not queueteleport then
     })
 end
 
--- SaveManager setup (GIỮ LẠI ĐỂ TRÁNH LỖI)
+--[[
+-- SaveManager và InterfaceManager (tùy chọn)
 SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("RestartScript")
 SaveManager:SetFolder("RestartScript/configs")
 
--- Select tab đầu tiên
-Window:SelectTab(1)
+-- Build Interface section
+InterfaceManager:BuildInterfaceSection(MainTab)
+SaveManager:BuildConfigSection(MainTab)
 
--- Load autoload config
+-- Load settings khi khởi động
+Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
+--]]
 
 -- Thông báo khởi động thành công
 Fluent:Notify({
