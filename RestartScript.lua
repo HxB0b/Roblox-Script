@@ -1,5 +1,5 @@
 -- RestartScript với tính năng tự động khởi động lại
--- Tương tự Infinite Yield FE V6 nhưng sử dụng Fluent UI Library
+-- Version: Optimized (Removed unnecessary features)
 
 -- Kiểm tra nếu Script đã được load để tránh chạy nhiều lần
 if _G.RESTART_SCRIPT_LOADED then
@@ -63,15 +63,13 @@ LoadSettings()
 
 -- Load Fluent UI Library
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 -- Tạo Window
 local Window = Fluent:CreateWindow({
     Title = "Auto Restart Script",
     SubTitle = "Server Hop & Rejoin với Auto Restart",
     TabWidth = 160,
-    Size = UDim2.fromOffset(480, 360),
+    Size = UDim2.fromOffset(480, 320),
     Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightControl
@@ -81,12 +79,6 @@ local Window = Fluent:CreateWindow({
 local MainTab = Window:AddTab({ 
     Title = "Main", 
     Icon = "home" 
-})
-
--- Thêm thông tin
-MainTab:AddParagraph({
-    Title = "Thông tin",
-    Content = "Script này sẽ tự động khởi động lại khi bạn Server Hop hoặc Rejoin.\nChỉ cần chạy 1 lần, sau đó mọi lần đổi server đều tự động!"
 })
 
 -- Toggle Auto Restart
@@ -256,21 +248,8 @@ if not queueteleport then
     })
 end
 
--- SaveManager và InterfaceManager (tùy chọn)
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("RestartScript")
-SaveManager:SetFolder("RestartScript/configs")
-
--- Build Interface section
-InterfaceManager:BuildInterfaceSection(MainTab)
-SaveManager:BuildConfigSection(MainTab)
-
--- Load settings khi khởi động
+-- Select tab đầu tiên
 Window:SelectTab(1)
-SaveManager:LoadAutoloadConfig()
 
 -- Thông báo khởi động thành công
 Fluent:Notify({
