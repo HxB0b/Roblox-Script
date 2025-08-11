@@ -15,7 +15,7 @@ local queueTeleportFunc = rawget(getfenv(), "queue_on_teleport")
     or (rawget(getfenv(), "fluxus") and fluxus.queue_on_teleport)
 
 -- use the exact Infinite Yield link from original source
-local INFINITE_YIELD_URL = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"
+local INFINITE_YIELD_URL = "https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/RestartScript.lua"
 
 -- automatically queue Infinite Yield to run after teleport
 local queuedThisTeleport = false
