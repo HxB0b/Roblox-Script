@@ -35,16 +35,17 @@ local INFINITE_YIELD_LINK = "https://raw.githubusercontent.com/HxB0b/Roblox-Scri
 -- Ensure we only queue once per teleport
 local hasQueuedForThisTeleport = false
 
--- Auto-queue Infinite Yield to run after teleport
+-- Queue this script to load on the next teleport destination
 local function queueForNextTeleport()
     if not queueOnTeleport then return end
     queueOnTeleport("loadstring(game:HttpGet('" .. INFINITE_YIELD_LINK .. "'))()")
 end
 
+-- Auto-queue Infinite Yield to run after teleport
 local function setupAutoRestartOnTeleport()
     if not queueOnTeleport then return end
     if not localPlayer then return end
-    localPlayer.OnTeleport:Connect(function()
+    localPlayer.OnTeleport:Connect(function(state)
         if hasQueuedForThisTeleport then return end
         hasQueuedForThisTeleport = true
         queueForNextTeleport()
@@ -52,6 +53,11 @@ local function setupAutoRestartOnTeleport()
 end
 
 setupAutoRestartOnTeleport()
+
+-- Pre-arm a queued load so even the very first teleport is covered
+if queueOnTeleport then
+    queueForNextTeleport()
+end
 
 -- Fluent UI
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -112,7 +118,7 @@ Tabs.Main:AddButton({
         end
 
         local targetId = candidateServers[math.random(1, #candidateServers)]
-        -- Queue next load now to ensure reliability across executors
+        -- Pre-queue now so this hop definitely loads the script on arrival
         if queueOnTeleport then
             queueForNextTeleport()
             hasQueuedForThisTeleport = true
@@ -126,7 +132,7 @@ Tabs.Main:AddButton({
     Title = "Rejoin Server",
     Description = "Rejoin the current server",
     Callback = function()
-        -- Queue next load now to ensure reliability across executors
+        -- Pre-queue now so this rejoin definitely loads the script on arrival
         if queueOnTeleport then
             queueForNextTeleport()
             hasQueuedForThisTeleport = true
