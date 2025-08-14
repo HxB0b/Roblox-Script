@@ -1,6 +1,5 @@
 -- Auto Find Devil Fruits Script
 -- Version: 1.0
--- Không sử dụng giao diện, chỉ hoạt động tự động với thông báo
 
 -- Kiểm tra để tránh chạy nhiều lần
 if _G.AUTO_FIND_FRUITS_LOADED then
@@ -21,9 +20,34 @@ local Player = Players.LocalPlayer
 local PlaceId = game.PlaceId
 local JobId = game.JobId
 
--- Load Notification System
-local NotificationHolder = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Module.Lua"))()
-local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
+-- Custom Notification System with more control
+local function CreateNotification(title, text, duration, button1Text, button2Text, callbackYes, callbackNo)
+    local NotificationBindable = Instance.new("BindableFunction")
+    
+    NotificationBindable.OnInvoke = function(buttonText)
+        if buttonText == button1Text and callbackYes then
+            callbackYes()
+        elseif buttonText == button2Text and callbackNo then
+            callbackNo()
+        end
+    end
+    
+    local notificationData = {
+        Title = title or "Notification",
+        Text = text or "",
+        Duration = duration or 5
+    }
+    
+    if button1Text then
+        notificationData.Button1 = button1Text
+        if button2Text then
+            notificationData.Button2 = button2Text
+        end
+        notificationData.Callback = NotificationBindable
+    end
+    
+    game.StarterGui:SetCore("SendNotification", notificationData)
+end
 
 -- Queue on teleport function check
 local queueteleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
@@ -37,10 +61,10 @@ _G.HasJoinedGame = false
 _G.WaitingForServerHopResponse = false -- Flag để tránh thông báo lặp lại
 
 -- Thông báo khởi động thành công
-Notification:Notify(
-    {Title = "Start Up", Description = "Script Loaded Successfully!!"},
-    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "image"},
-    {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
+CreateNotification(
+    "Auto Find Devil Fruits",
+    "Script Loaded Successfully! The script will automatically scan for Devil Fruits.",
+    7
 )
 
 -- Function để tham gia game (chọn team Pirates)
@@ -219,11 +243,11 @@ end
 
 -- Function xử lý khi tìm thấy Devil Fruit
 local function ProcessFoundFruit(fruitData)
-    -- Thông báo tìm thấy
-    Notification:Notify(
-        {Title = "Find", Description = fruitData.Name .. " Found"},
-        {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "image"},
-        {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84)}
+    -- Thông báo tìm thấy với tùy chọn
+    CreateNotification(
+        "Devil Fruit Found!",
+        fruitData.Name .. " has been found! Teleporting to fruit location...",
+        5
     )
     
     -- Tham gia game nếu chưa
@@ -247,7 +271,7 @@ local function ProcessFoundFruit(fruitData)
     return success
 end
 
--- Function hỏi người dùng về Server Hop
+-- Function hỏi người dùng về Server Hop với notification tùy chỉnh
 local function AskServerHop(reason)
     -- Kiểm tra xem đã đang chờ phản hồi chưa
     if _G.WaitingForServerHopResponse then
@@ -257,21 +281,34 @@ local function AskServerHop(reason)
     _G.WaitingForServerHopResponse = true -- Đánh dấu đang chờ phản hồi
     local description = reason or "Do you want to change server?"
     
-    Notification:Notify(
-        {Title = "Server", Description = description},
-        {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 10, Type = "option"},
-        {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84), 
-         Callback = function(State)
-            _G.WaitingForServerHopResponse = false -- Reset flag
-            if State then
-                -- Người dùng chọn "Có" - Server Hop
-                ServerHop()
-            else
-                -- Người dùng chọn "Không" - Tiếp tục quét
-                wait(5)
-                _G.IsSearching = false -- Reset để quét lại
-            end
-         end}
+    -- Tạo notification với 2 button tùy chỉnh
+    CreateNotification(
+        "Server Hop",
+        description,
+        15, -- Duration 15 giây
+        "Yes", -- Button 1
+        "No",  -- Button 2
+        function() -- Callback khi chọn Yes
+            _G.WaitingForServerHopResponse = false
+            print("[Auto Find Devil Fruits] User selected: Server Hop")
+            CreateNotification(
+                "Server Hop",
+                "Starting server hop...",
+                3
+            )
+            ServerHop()
+        end,
+        function() -- Callback khi chọn No
+            _G.WaitingForServerHopResponse = false
+            print("[Auto Find Devil Fruits] User selected: Continue searching")
+            CreateNotification(
+                "Continue",
+                "Continuing to search in current server...",
+                3
+            )
+            wait(5)
+            _G.IsSearching = false -- Reset để quét lại
+        end
     )
     
     -- Timeout sau 15 giây nếu người dùng không chọn
@@ -337,8 +374,8 @@ spawn(function()
                             end
                             
                             if not hasNewFruits and not _G.WaitingForServerHopResponse then
-                                -- Không còn Devil Fruits mới - chỉ hỏi 1 lần
-                                AskServerHop("No more Devil Fruits found. Do you want to change server?")
+                                -- Không còn Devil Fruits mới - chỉ hỏi 1 lần với notification đầy đủ
+                                AskServerHop("No more Devil Fruits found in this server. Would you like to hop to another server?")
                                 break -- Thoát khỏi vòng lặp để tránh hỏi nhiều lần
                             end
                         end
@@ -347,7 +384,7 @@ spawn(function()
                 
                 -- Nếu không xử lý fruit nào (tất cả đã được xử lý trước đó)
                 if not processedAnyFruit and not _G.WaitingForServerHopResponse then
-                    AskServerHop("All Devil Fruits have been collected. Do you want to change server?")
+                    AskServerHop("All Devil Fruits in this server have been collected. Would you like to hop to another server?")
                 end
                 
                 _G.IsSearching = false
@@ -358,8 +395,8 @@ spawn(function()
                 -- Quét lại lần nữa
                 fruits = ScanForDevilFruits()
                 if #fruits == 0 and not _G.WaitingForServerHopResponse then
-                    -- Vẫn không tìm thấy - chỉ hỏi 1 lần
-                    AskServerHop("No Devil Fruits found in this server. Do you want to change server?")
+                    -- Vẫn không tìm thấy - hỏi với notification tùy chỉnh
+                    AskServerHop("No Devil Fruits found in this server. Would you like to hop to another server to continue searching?")
                 end
                 _G.IsSearching = false
             end
