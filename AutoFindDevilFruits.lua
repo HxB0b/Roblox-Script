@@ -34,6 +34,7 @@ _G.CurrentTween = nil
 _G.FoundFruits = {}
 _G.IsSearching = false
 _G.HasJoinedGame = false
+_G.WaitingForServerHopResponse = false -- Flag để tránh thông báo lặp lại
 
 -- Thông báo khởi động thành công
 Notification:Notify(
@@ -248,6 +249,12 @@ end
 
 -- Function hỏi người dùng về Server Hop
 local function AskServerHop(reason)
+    -- Kiểm tra xem đã đang chờ phản hồi chưa
+    if _G.WaitingForServerHopResponse then
+        return -- Không hiển thị thông báo mới nếu đang chờ
+    end
+    
+    _G.WaitingForServerHopResponse = true -- Đánh dấu đang chờ phản hồi
     local description = reason or "Do you want to change server?"
     
     Notification:Notify(
@@ -255,6 +262,7 @@ local function AskServerHop(reason)
         {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 10, Type = "option"},
         {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(255, 84, 84), 
          Callback = function(State)
+            _G.WaitingForServerHopResponse = false -- Reset flag
             if State then
                 -- Người dùng chọn "Có" - Server Hop
                 ServerHop()
@@ -265,6 +273,15 @@ local function AskServerHop(reason)
             end
          end}
     )
+    
+    -- Timeout sau 15 giây nếu người dùng không chọn
+    spawn(function()
+        wait(15)
+        if _G.WaitingForServerHopResponse then
+            _G.WaitingForServerHopResponse = false
+            _G.IsSearching = false
+        end
+    end)
 end
 
 -- Main Loop - Quét và xử lý Devil Fruits
@@ -272,7 +289,7 @@ spawn(function()
     wait(3) -- Đợi script load hoàn toàn
     
     while _G.AutoFindFruitsEnabled do
-        if not _G.IsSearching then
+        if not _G.IsSearching and not _G.WaitingForServerHopResponse then
             _G.IsSearching = true
             
             -- Quét Devil Fruits
@@ -280,6 +297,8 @@ spawn(function()
             
             if #fruits > 0 then
                 -- Tìm thấy Devil Fruits
+                local processedAnyFruit = false
+                
                 for _, fruitData in pairs(fruits) do
                     -- Kiểm tra xem đã xử lý fruit này chưa
                     local alreadyProcessed = false
@@ -293,6 +312,7 @@ spawn(function()
                     if not alreadyProcessed then
                         table.insert(_G.FoundFruits, fruitData.Name)
                         local success = ProcessFoundFruit(fruitData)
+                        processedAnyFruit = true
                         
                         if success then
                             -- Đợi 5 giây sau khi teleport
@@ -316,26 +336,32 @@ spawn(function()
                                 end
                             end
                             
-                            if not hasNewFruits then
-                                -- Không còn Devil Fruits mới
+                            if not hasNewFruits and not _G.WaitingForServerHopResponse then
+                                -- Không còn Devil Fruits mới - chỉ hỏi 1 lần
                                 AskServerHop("No more Devil Fruits found. Do you want to change server?")
-                                _G.IsSearching = false
-                                break
+                                break -- Thoát khỏi vòng lặp để tránh hỏi nhiều lần
                             end
                         end
                     end
                 end
+                
+                -- Nếu không xử lý fruit nào (tất cả đã được xử lý trước đó)
+                if not processedAnyFruit and not _G.WaitingForServerHopResponse then
+                    AskServerHop("All Devil Fruits have been collected. Do you want to change server?")
+                end
+                
+                _G.IsSearching = false
             else
                 -- Không tìm thấy Devil Fruits ngay từ đầu
                 wait(5) -- Đợi 5 giây để chắc chắn
                 
                 -- Quét lại lần nữa
                 fruits = ScanForDevilFruits()
-                if #fruits == 0 then
-                    -- Vẫn không tìm thấy
+                if #fruits == 0 and not _G.WaitingForServerHopResponse then
+                    -- Vẫn không tìm thấy - chỉ hỏi 1 lần
                     AskServerHop("No Devil Fruits found in this server. Do you want to change server?")
-                    _G.IsSearching = false
                 end
+                _G.IsSearching = false
             end
         end
         
@@ -361,3 +387,8 @@ game:GetService("Players").LocalPlayer.Idled:connect(function()
     wait()
     game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
+
+print("[Auto Find Devil Fruits] Script loaded successfully!")
+print("[Auto Find Devil Fruits] The script will automatically scan for Devil Fruits")
+print("[Auto Find Devil Fruits] When found, it will teleport you to the fruit")
+print("[Auto Find Devil Fruits] You can choose to change server when no more fruits are found")
