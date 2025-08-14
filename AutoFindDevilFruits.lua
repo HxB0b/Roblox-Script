@@ -387,8 +387,3 @@ game:GetService("Players").LocalPlayer.Idled:connect(function()
     wait()
     game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
-
-print("[Auto Find Devil Fruits] Script loaded successfully!")
-print("[Auto Find Devil Fruits] The script will automatically scan for Devil Fruits")
-print("[Auto Find Devil Fruits] When found, it will teleport you to the fruit")
-print("[Auto Find Devil Fruits] You can choose to change server when no more fruits are found")
