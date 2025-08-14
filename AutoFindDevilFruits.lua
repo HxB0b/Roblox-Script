@@ -173,7 +173,7 @@ local function ServerHop()
                         -- Queue script để tự khởi động lại khi vào server mới
                         if queueteleport then
                             queueteleport([[
-                                loadstring(game:HttpGet(']] .. "https://raw.githubusercontent.com/YourUsername/YourRepo/main/AutoFindDevilFruits.lua" .. [['))()
+                                loadstring(game:HttpGet(']] .. "https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/AutoFindDevilFruits.lua" .. [['))()
                             ]])
                         end
                         TeleportService:TeleportToPlaceInstance(PlaceID, ID, Players.LocalPlayer)
@@ -349,7 +349,7 @@ if queueteleport then
         if State == Enum.TeleportState.Started then
             queueteleport([[
                 wait(5) -- Đợi game load
-                loadstring(game:HttpGet(']] .. "https://raw.githubusercontent.com/YourUsername/YourRepo/main/AutoFindDevilFruits.lua" .. [['))()
+                loadstring(game:HttpGet(']] .. "https://raw.githubusercontent.com/HxB0b/Roblox-Script/refs/heads/main/AutoFindDevilFruits.lua" .. [['))()
             ]])
         end
     end)
