@@ -1,5 +1,6 @@
 -- Auto Find Devil Fruits Script
 -- Version: 1.0
+-- Không sử dụng giao diện, chỉ hoạt động tự động với thông báo
 
 -- Kiểm tra để tránh chạy nhiều lần
 if _G.AUTO_FIND_FRUITS_LOADED then
@@ -424,3 +425,17 @@ game:GetService("Players").LocalPlayer.Idled:connect(function()
     wait()
     game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
+
+-- Thông báo console và notification cuối cùng
+print("[Auto Find Devil Fruits] Script loaded successfully!")
+print("[Auto Find Devil Fruits] The script will automatically scan for Devil Fruits")
+print("[Auto Find Devil Fruits] When found, it will teleport you to the fruit")
+print("[Auto Find Devil Fruits] You can choose to change server when no more fruits are found")
+
+-- Thông báo hướng dẫn sử dụng
+wait(2)
+CreateNotification(
+    "Instructions",
+    "Auto-scanning for Devil Fruits. You'll be notified when fruits are found or when server hop is needed.",
+    10
+)
